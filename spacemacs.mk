@@ -1,6 +1,6 @@
 ## Makefile --- Spacemacs master makefile
 ##
-## Copyright (c) 2012-2017 Sylvain Benner & Contributors
+## Copyright (c) 2012-2018 Sylvain Benner & Contributors
 ##
 ## Author: Sylvain Benner <sylvain.benner@gmail.com>
 ## URL: https://github.com/syl20bnr/spacemacs
@@ -28,7 +28,7 @@ unit_tests:
 	@echo "================================================================="
 	@echo "UNIT TESTS FOR $(TEST_NAME)"
 	@echo "================================================================="
-	@emacs -batch -l ert \
+	emacs -batch -l ert \
 		$(addprefix -l $(EMACS_DIR)/, $(LOAD_FILES)) \
 		$(addprefix -l $(TEST_DIR)/, $(UNIT_TEST_FILES)) \
 		-f ert-run-tests-batch-and-exit
