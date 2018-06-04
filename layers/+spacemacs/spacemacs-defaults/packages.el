@@ -17,6 +17,8 @@
         (conf-mode :location built-in)
         (dired :location built-in)
         (dired-x :location built-in)
+        (display-line-numbers :location built-in
+                              :toggle (version<= "26" emacs-version))
         (electric-indent-mode :location built-in)
         (ediff :location built-in)
         (eldoc :location built-in)
@@ -24,7 +26,7 @@
         (hi-lock :location built-in)
         (image-mode :location built-in)
         (imenu :location built-in)
-        (linum :location built-in)
+        (linum :location built-in :toggle (version< emacs-version "26"))
         (occur-mode :location built-in)
         (package-menu :location built-in)
         ;; page-break-lines is shipped with spacemacs core
@@ -123,7 +125,8 @@
 
 (defun spacemacs-defaults/init-eldoc ()
   (use-package eldoc
-    :defer t
+    :defer (spacemacs/defer)
+    :init (spacemacs|require 'eldoc)
     :config
     (progn
       ;; enable eldoc in `eval-expression'
@@ -178,6 +181,48 @@
     :defer t
     :init (spacemacs/set-leader-keys "ji" 'imenu)))
 
+(defun spacemacs-defaults/init-display-line-numbers ()
+  (use-package display-line-numbers
+    :defer t
+    :init
+    (progn
+      (if (spacemacs/relative-line-numbers-p)
+          (setq display-line-numbers-type 'relative)
+        (setq display-line-numbers-type t))
+
+      (spacemacs|add-toggle line-numbers
+        :status (and (featurep 'display-line-numbers)
+                     display-line-numbers-mode
+                     (eq display-line-numbers t))
+        :on (prog1 (display-line-numbers-mode)
+              (setq display-line-numbers t))
+        :off (display-line-numbers-mode -1)
+        :on-message "Absolute line numbers enabled."
+        :off-message "Line numbers disabled."
+        :documentation "Show the line numbers."
+        :evil-leader "tn")
+      (spacemacs|add-toggle relative-line-numbers
+        :status (and (featurep 'display-line-numbers)
+                     display-line-numbers-mode
+                     (eq display-line-numbers 'relative))
+        :on (prog1 (display-line-numbers-mode)
+              (setq display-line-numbers 'relative))
+        :off (display-line-numbers-mode -1)
+        :documentation "Show relative line numbers."
+        :on-message "Relative line numbers enabled."
+        :off-message "Line numbers disabled."
+        :evil-leader "tr")
+
+      (when (spacemacs//linum-backward-compabitility)
+        (add-hook 'prog-mode-hook 'display-line-numbers-mode)
+        (add-hook 'text-mode-hook 'display-line-numbers-mode))
+
+      ;; it's ok to add an advice before the function is defined, and we must
+      ;; add this advice before calling `global-display-line-numbers-mode'
+      (advice-add #'display-line-numbers--turn-on :around #'spacemacs//linum-on)
+      (when dotspacemacs-line-numbers
+        (global-display-line-numbers-mode)))))
+
 (defun spacemacs-defaults/init-linum ()
   (use-package linum
     :init
@@ -217,13 +262,14 @@
 
 (defun spacemacs-defaults/init-recentf ()
   (use-package recentf
-    :defer t
+    :defer (spacemacs/defer)
     :init
     (progn
-      ;; lazy load recentf
-      (add-hook 'find-file-hook (lambda () (unless recentf-mode
-                                             (recentf-mode)
-                                             (recentf-track-opened-file))))
+      (spacemacs|require 'recentf)
+      (when (spacemacs/defer)
+        (add-hook 'find-file-hook (lambda () (unless recentf-mode
+                                               (recentf-mode)
+                                               (recentf-track-opened-file)))))
       (setq recentf-save-file (concat spacemacs-cache-directory "recentf")
             recentf-max-saved-items 1000
             recentf-auto-cleanup 'never
@@ -232,8 +278,8 @@
     :config
     (progn
       (add-to-list 'recentf-exclude
-                   (file-truename spacemacs-cache-directory))
-      (add-to-list 'recentf-exclude (file-truename package-user-dir))
+                   (recentf-expand-file-name spacemacs-cache-directory))
+      (add-to-list 'recentf-exclude (recentf-expand-file-name package-user-dir))
       (add-to-list 'recentf-exclude "COMMIT_EDITMSG\\'"))))
 
 (defun spacemacs-defaults/init-savehist ()
@@ -362,9 +408,9 @@
 
 (defun spacemacs-defaults/init-winner ()
   (use-package winner
+    :defer t
     :init
-    (progn
-      (winner-mode t)
+    (with-eval-after-load 'winner
       (setq spacemacs/winner-boring-buffers '("*Completions*"
                                               "*Compile-Log*"
                                               "*inferior-lisp*"
@@ -377,8 +423,7 @@
                                               "*esh command on file*"
                                               ))
       (setq winner-boring-buffers
-            (append winner-boring-buffers spacemacs/winner-boring-buffers))
-      (winner-mode t))))
+            (append winner-boring-buffers spacemacs/winner-boring-buffers)))))
 
 (defun spacemacs-defaults/init-zone ()
   (require 'zone)

@@ -55,6 +55,29 @@ Currently this function infloops when the list is circular."
       (push (pop tail) result))
     (nreverse result)))
 
+(defun spacemacs/plist-get (plist prop)
+  "Get the value associated to PROP in PLIST, a modified plist.
+
+You should always use this function instread of builtin `plist-get'
+in Spacemacs.
+
+A modified plist is one where keys are keywords and values are
+all non-keywords elements that follow it.
+
+If there are multiple properties with the same keyword, only the first property
+and its values is returned.
+
+Currently this function infloops when the list is circular."
+  (let ((tail plist)
+        result)
+    (while (and (consp tail) (not (eq prop (car tail))))
+      (pop tail))
+    ;; pop the found keyword
+    (pop tail)
+    (when (and (consp tail) (not (keywordp (car tail))))
+      (setq result (pop tail)))
+    result))
+
 (defun spacemacs/mplist-remove (plist prop)
   "Return a copy of a modified PLIST without PROP and its values.
 
@@ -76,11 +99,11 @@ and its values are removed."
 (defun spacemacs/dump-vars-to-file (varlist filename)
   "simplistic dumping of variables in VARLIST to a file FILENAME"
   (with-temp-file filename
-    (spacemacs/dump varlist (current-buffer))
+    (spacemacs/dump-vars varlist (current-buffer))
     (make-directory (file-name-directory filename) t)))
 
 ;; From http://stackoverflow.com/questions/2321904/elisp-how-to-save-data-in-a-file
-(defun spacemacs/dump (varlist buffer)
+(defun spacemacs/dump-vars (varlist buffer)
   "insert into buffer the setq statement to recreate the variables in VARLIST"
   (cl-loop for var in varlist do
         (print (list 'setq var (list 'quote (symbol-value var)))
@@ -272,10 +295,10 @@ buffer."
         finally return count))
 
 ;; from https://github.com/cofi/dotfiles/blob/master/emacs.d/config/cofi-util.el#L38
-(defun spacemacs/add-to-hooks (fun hooks)
+(defun spacemacs/add-to-hooks (fun hooks &optional append local)
   "Add function to hooks"
   (dolist (hook hooks)
-    (add-hook hook fun)))
+    (add-hook hook fun append local)))
 
 (defun spacemacs/add-all-to-hook (hook &rest funs)
   "Add functions to hook."
